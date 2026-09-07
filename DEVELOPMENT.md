@@ -6,7 +6,7 @@ See [setup file](docs/saythanks_development.md)
 
 To run the project, you need to set the following environment variables:
 
-- SENDGRID_API_KEY
+- MAILERSEND_API_KEY
 - DATABASE_URL
 - SENTRY_DSN
 - AUTH0_DOMAIN

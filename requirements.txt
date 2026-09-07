@@ -8,7 +8,7 @@ crayons
 dateparser
 docopt
 flake8
-flask
+flask<2.3
 flask-qrcode
 gunicorn
 humanize
@@ -35,7 +35,7 @@ raven
 regex
 requests
 ruamel.yaml
-mailersend
+mailersend==0.6.0
 six
 sqlalchemy
 tablib
