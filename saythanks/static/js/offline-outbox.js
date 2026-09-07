@@ -37,6 +37,7 @@ async function queueOfflineNote(noteData) {
       action: noteData.action,
       byline: noteData.byline || '',
       body: noteData.body || '',
+      contentType: noteData.contentType || 'composed',
       audioBlob: noteData.audioBlob || null,
       audioFileName: noteData.audioFileName || 'voice_note.webm',
       createdAt: new Date().toISOString(),
@@ -45,6 +46,16 @@ async function queueOfflineNote(noteData) {
     const req = store.add(item);
     req.onsuccess = () => {
       updateOutboxBadge();
+
+      // Register W3C Background Sync if available
+      if ('serviceWorker' in navigator && 'SyncManager' in window) {
+        navigator.serviceWorker.ready.then((reg) => {
+          return reg.sync.register('sync-saythanks-outbox');
+        }).catch((err) => {
+          console.debug('[SyncManager] Registration deferred:', err);
+        });
+      }
+
       resolve(req.result);
     };
     req.onerror = () => reject(req.error);
@@ -101,6 +112,7 @@ async function syncOutboxQueue() {
       const formData = new FormData();
       formData.append('byline', note.byline);
       formData.append('body', note.body);
+      formData.append('content-type', note.contentType || 'composed');
       if (note.audioBlob) {
         formData.append('audio', note.audioBlob, note.audioFileName);
       }

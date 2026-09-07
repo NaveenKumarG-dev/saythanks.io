@@ -168,12 +168,13 @@ thoughtful words, so far… (shoot for 42!)</h6>
   var submitBtn = document.getElementById("send-note-btn");
   
   function handleOfflineSave(actionUrl, bylineVal, bodyVal,
-                             fileBlob, fileName) {
+                             contentTypeVal, fileBlob, fileName) {
     if (typeof queueOfflineNote === 'function') {
       queueOfflineNote({
         action: actionUrl,
         byline: bylineVal,
         body: bodyVal,
+        contentType: contentTypeVal || 'markdown',
         audioBlob: fileBlob,
         audioFileName: fileName
       }).then(() => {
@@ -204,6 +205,9 @@ thoughtful words, so far… (shoot for 42!)</h6>
 
     const bylineVal = document.getElementById('byline').value || '';
     const bodyVal = editor.getMarkdown();
+    const cTypeRadio = form.querySelector('input[name="content-type"]:checked') ||
+                       form.querySelector('input[name="content-type"]');
+    const contentTypeVal = cTypeRadio ? cTypeRadio.value : 'markdown';
     let attachedAudio = null;
     let audioFileName = 'voice_note.webm';
 
@@ -220,7 +224,8 @@ thoughtful words, so far… (shoot for 42!)</h6>
     // Check if phone or desktop is offline / airplane mode
     if (!navigator.onLine) {
       handleOfflineSave(form.getAttribute('action'), bylineVal,
-                        bodyVal, attachedAudio, audioFileName);
+                        bodyVal, contentTypeVal,
+                        attachedAudio, audioFileName);
       return;
     }
 
@@ -244,7 +249,8 @@ thoughtful words, so far… (shoot for 42!)</h6>
     request.onerror = () => {
       // Fallback: save to outbox if network drops mid-send
       handleOfflineSave(form.getAttribute('action'), bylineVal,
-                        bodyVal, attachedAudio, audioFileName);
+                        bodyVal, contentTypeVal,
+                        attachedAudio, audioFileName);
     };
     request.upload.onprogress = e => {
       if (e.lengthComputable) 

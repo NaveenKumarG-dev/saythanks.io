@@ -3,7 +3,7 @@
    Offline-first caching, shell resilience, and background sync support.
    ========================================================================== */
 
-const CACHE_VERSION = 'saythanks-v1';
+const CACHE_VERSION = 'saythanks-v2';
 const STATIC_ASSETS = [
   '/',
   '/thanks',
@@ -17,17 +17,14 @@ const STATIC_ASSETS = [
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',
   '/static/images/owly.svg',
-  '/static/images/inbox.png',
-  'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js'
+  '/static/images/inbox.png'
 ];
 
-// 1. Install: Pre-cache core application shell
+// 1. Install: Pre-cache core local application shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[PWA SW] Pre-cache partial warning:', err);
-      });
+      return cache.addAll(STATIC_ASSETS);
     }).then(() => self.skipWaiting())
   );
 });
@@ -47,11 +44,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Fetch: Stale-while-revalidate for assets, Network-first for pages
+// 3. Fetch: Safe caching strategy
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
-  // Only intercept GET requests
   if (request.method !== 'GET') {
     return;
   }
@@ -78,13 +74,26 @@ self.addEventListener('fetch', (event) => {
             });
           }
           return networkResponse;
-        }).catch(() => cachedResponse);
+        }).catch(() => {
+          // Provide clean fallback Response instead of undefined
+          return new Response('', { status: 408, statusText: 'Offline' });
+        });
       })
     );
     return;
   }
 
-  // Strategy B: Navigation & HTML Pages -> Network-first with cache fallback
+  // Strategy B: Navigation & Public HTML Pages only
+  // Avoid caching authenticated pages like /inbox or account settings
+  const isPublicPage = url.pathname === '/' ||
+                       url.pathname === '/thanks' ||
+                       url.pathname === '/privacy' ||
+                       url.pathname.startsWith('/to/');
+
+  if (!isPublicPage) {
+    return;
+  }
+
   event.respondWith(
     fetch(request)
       .then((networkResponse) => {
@@ -101,7 +110,14 @@ self.addEventListener('fetch', (event) => {
         if (cached) {
           return cached;
         }
-        return caches.match('/');
+        const fallback = await caches.match('/');
+        if (fallback) {
+          return fallback;
+        }
+        return new Response('<h1>SayThanks is currently offline</h1><p>Notes will sync once reconnected.</p>', {
+          status: 503,
+          headers: { 'Content-Type': 'text/html' }
+        });
       })
   );
 });
