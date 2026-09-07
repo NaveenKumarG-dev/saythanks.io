@@ -148,7 +148,16 @@ function setSelectedFont() {
    else{
      r.style.setProperty('--customfont', localFont);	
    }
-}
+</script>
+<script src="{{ url_for('static', filename='js/offline-outbox.js') }}"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/sw.js').catch(function(err) {
+        console.warn('[PWA] ServiceWorker registration failed:', err);
+      });
+    });
+  }
 </script>
 </body>
 </html>
