@@ -72,6 +72,7 @@
 
 <header>
   <span>Version: {{ app_version }}</span>
+  <span id="network-status" role="status" aria-live="polite"></span>
   <!-- Other header elements -->
 </header>
 
@@ -108,6 +109,25 @@
   
 {# Gaug.es #}
 <script type="text/javascript">
+  (function registerProgressiveWebApp() {
+    const status = document.getElementById('network-status');
+
+    function updateNetworkStatus() {
+      status.textContent = navigator.onLine ? ' Online' : ' Offline';
+      status.style.color = navigator.onLine ? 'green' : 'darkorange';
+    }
+
+    updateNetworkStatus();
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+
+    if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {
+        status.textContent += ' (offline support unavailable)';
+      });
+    }
+  })();
+
   var _gauges = _gauges || [];
   (function() {
     var t   = document.createElement('script');

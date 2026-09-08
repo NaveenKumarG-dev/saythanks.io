@@ -182,6 +182,13 @@ def robots():
     return send_from_directory("static", "robots.txt")
 
 
+@app.route("/service-worker.js")
+def service_worker():
+    response = send_from_directory("static", "service-worker.js")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.route('/privacy')
 def privacy():
     return render_template("privacy.htm.j2")
