@@ -60,7 +60,8 @@ def test_service_worker_versioned_cache_removes_old_caches():
     service_worker = _read('saythanks/static/service-worker.js')
     compact_worker = re.sub(r'\s+', '', service_worker)
 
-    assert re.search(r"const CACHE_NAME = 'saythanks-public-v\d+';", service_worker)
+    assert re.search(
+        r"const CACHE_NAME = 'saythanks-public-v\d+';", service_worker)
     assert "cacheNames.filter(cacheName=>cacheName!==CACHE_NAME)" in compact_worker
     assert "caches.delete(cacheName)" in service_worker
 
@@ -94,7 +95,7 @@ def test_note_form_restores_and_saves_body_and_byline():
     assert "byline: document.getElementById('byline').value," in submit_template
     assert "editor.addHook('change', () => {" in submit_template
     assert (
-        "document.getElementById('byline').addEventListener(" 
+        "document.getElementById('byline').addEventListener("
         "'input', scheduleDraftSave)"
     ) in submit_template
 
