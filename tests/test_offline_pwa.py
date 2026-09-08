@@ -2,6 +2,7 @@
 
 import os
 import re
+import json
 
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
@@ -69,7 +70,18 @@ def test_service_worker_versioned_cache_removes_old_caches():
 def test_service_worker_cache_version_changes_for_new_offline_code():
     service_worker = _read('saythanks/static/service-worker.js')
 
-    assert "const CACHE_NAME = 'saythanks-public-v2';" in service_worker
+    assert "const CACHE_NAME = 'saythanks-public-v3';" in service_worker
+
+
+def test_android_manifest_has_install_and_display_metadata():
+    manifest = json.loads(_read('saythanks/static/manifest.json'))
+
+    assert manifest['scope'] == '/'
+    assert manifest['start_url'] == '/'
+    assert manifest['display'] == 'standalone'
+    assert manifest['orientation'] == 'portrait-primary'
+    assert manifest['theme_color'] == '#3ac025'
+    assert all(icon['purpose'] == 'any maskable' for icon in manifest['icons'])
 
 
 def test_network_status_is_exposed_as_an_accessible_live_region():
@@ -78,6 +90,21 @@ def test_network_status_is_exposed_as_an_accessible_live_region():
     assert '<span id="network-status" role="status" aria-live="polite"></span>' in base_template
     assert "window.addEventListener('online', updateNetworkStatus)" in base_template
     assert "window.addEventListener('offline', updateNetworkStatus)" in base_template
+
+
+def test_note_form_has_mobile_responsive_and_touch_friendly_controls():
+    base_template = _read('saythanks/templates/base.htm.j2')
+    css = _read('saythanks/static/css/saythanks.css')
+    submit_template = _read('saythanks/templates/submit_note.htm.j2')
+
+    assert '<meta name="theme-color" content="#3ac025">' in base_template
+    assert '@media (max-width: 775px)' in css
+    assert 'min-height: 44px;' in css
+    assert '#thankyou-note-form .form-row {' in css
+    assert 'flex-direction: column;' in css
+    assert 'font-size: 16px;' in css
+    assert '<div class="form-row">' in submit_template
+    assert 'autocomplete="name"' in submit_template
 
 
 def test_note_form_uses_indexeddb_and_keys_drafts_by_form_action():

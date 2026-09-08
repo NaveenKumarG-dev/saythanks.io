@@ -39,7 +39,7 @@
 <form id="thankyou-note-form" class="form-horizontal"
       action="./{{ user|urlencode }}/submit{{ '/' ~ topic if topic else '' }}"
       method="post">
-<div class="form-row" style="display:flex; align-items:center; gap:1rem; flex-wrap:nowrap;">
+<div class="form-row">
   <label for="fontstyle" style="white-space:nowrap;">Font Style:</label>
   <select name="font_style" id="fontstyle" onchange="fontforinbox(this);">
     <option value="0">Regular</option>
@@ -116,10 +116,10 @@ thoughtful words, so far… (shoot for 42!)</h6>
     Sincerely,
   </label>
   <div class="col-md-4">
-    <input class='notebodyfont' id="byline"
-           class="u-full-width" name="byline" type="text"
+    <input class="notebodyfont u-full-width" id="byline"
+           name="byline" type="text"
            placeholder="{{ fake_name }}"
-           class="form-control input-md">
+           autocomplete="name">
   </div>
 </div>
 
