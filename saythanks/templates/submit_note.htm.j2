@@ -273,6 +273,9 @@ thoughtful words, so far… (shoot for 42!)</h6>
     formData.append('byline', record.byline);
     formData.append('font_style', record.fontStyle);
     formData.append('content-type', record.contentType);
+    if (record.audioBlob) {
+      formData.append('audio', record.audioBlob, record.audioFileName);
+    }
     return formData;
   }
 
@@ -309,10 +312,11 @@ thoughtful words, so far… (shoot for 42!)</h6>
   }
 
   async function queueOfflineNote() {
-    const hasAudio = audioBlob || audioFileInput.files.length > 0;
-    if (hasAudio) {
-      throw new Error('Audio notes cannot be queued offline yet.');
-    }
+    const offlineAudio = audioBlob || audioFileInput.files[0] || null;
+    const audioFileName = offlineAudio
+      ? (offlineAudio.name || (offlineAudio.type.includes('mp4')
+        ? 'voice_note.m4a' : 'voice_note.webm'))
+      : null;
     await writeOutbox({
       id: createOutboxId(),
       action: new URL(form.getAttribute('action'), window.location.href).href,
@@ -320,6 +324,8 @@ thoughtful words, so far… (shoot for 42!)</h6>
       byline: document.getElementById('byline').value,
       fontStyle: form.elements.font_style.value,
       contentType: form.elements['content-type'].value,
+      audioBlob: offlineAudio,
+      audioFileName: audioFileName,
       status: 'queued',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

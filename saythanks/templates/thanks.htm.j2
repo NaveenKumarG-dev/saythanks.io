@@ -110,6 +110,9 @@
           formData.append('byline', record.byline);
           formData.append('font_style', record.fontStyle);
           formData.append('content-type', record.contentType);
+          if (record.audioBlob) {
+            formData.append('audio', record.audioBlob, record.audioFileName);
+          }
           request.open('POST', record.action);
           request.onload = () => {
             if (request.status >= 200 && request.status < 400) {

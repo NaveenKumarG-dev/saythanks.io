@@ -148,11 +148,13 @@ def test_offline_outbox_retries_on_startup_and_reconnection():
     assert "await deleteOutbox(record.id);" in submit_template
 
 
-def test_audio_is_explicitly_rejected_from_offline_outbox():
+def test_audio_is_stored_in_offline_outbox():
     submit_template = _read('saythanks/templates/submit_note.htm.j2')
 
-    assert "Audio notes cannot be queued offline yet." in submit_template
-    assert "const hasAudio = audioBlob || audioFileInput.files.length > 0;" in submit_template
+    assert "const offlineAudio = audioBlob || audioFileInput.files[0] || null;" in submit_template
+    assert "audioBlob: offlineAudio," in submit_template
+    assert "audioFileName: audioFileName," in submit_template
+    assert "formData.append('audio', record.audioBlob, record.audioFileName);" in submit_template
 
 
 def test_submission_redirects_to_shared_thanks_statuses():
@@ -174,6 +176,7 @@ def test_thanks_page_reports_delivery_status_and_waiting_count():
     assert "Sending saved notes..." in thanks_template
     assert "await sendRecord(record);" in thanks_template
     assert "await deleteRecord(record.id);" in thanks_template
+    assert "formData.append('audio', record.audioBlob, record.audioFileName);" in thanks_template
     assert "window.addEventListener('online', updateStatus);" in thanks_template
 
 
