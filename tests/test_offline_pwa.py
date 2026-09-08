@@ -80,10 +80,14 @@ def test_note_form_uses_indexeddb_and_keys_drafts_by_form_action():
     assert "const draftDatabaseName = 'saythanks-pwa';" in submit_template
     assert "const draftStoreName = 'drafts';" in submit_template
     assert "const draftKey = form.getAttribute('action');" in submit_template
-    assert "indexedDB.open(draftDatabaseName, 1)" in submit_template
+    assert "indexedDB.open(draftDatabaseName, 2)" in submit_template
     assert "createObjectStore(draftStoreName, { keyPath: 'key' })" in submit_template
     assert "objectStore(draftStoreName).put({" in submit_template
     assert "key: draftKey," in submit_template
+    assert "const outboxStoreName = 'outbox';" in submit_template
+    assert "createObjectStore(outboxStoreName, { keyPath: 'id' })" in submit_template
+    assert "status: 'queued'," in submit_template
+    assert "createOutboxId()" in submit_template
 
 
 def test_note_form_restores_and_saves_body_and_byline():
@@ -98,6 +102,23 @@ def test_note_form_restores_and_saves_body_and_byline():
         "document.getElementById('byline').addEventListener("
         "'input', scheduleDraftSave)"
     ) in submit_template
+
+
+def test_offline_outbox_retries_on_startup_and_reconnection():
+    submit_template = _read('saythanks/templates/submit_note.htm.j2')
+
+    assert "window.addEventListener('online', () => syncOutbox()" in submit_template
+    assert "syncOutbox().catch(() => {});" in submit_template
+    assert "updateOutboxStatus(record.id, 'sending')" in submit_template
+    assert "updateOutboxStatus(record.id, 'failed', error.message)" in submit_template
+    assert "await deleteOutbox(record.id);" in submit_template
+
+
+def test_audio_is_explicitly_rejected_from_offline_outbox():
+    submit_template = _read('saythanks/templates/submit_note.htm.j2')
+
+    assert "Audio notes cannot be queued offline yet." in submit_template
+    assert "const hasAudio = audioBlob || audioFileInput.files.length > 0;" in submit_template
 
 
 def test_offline_fallback_does_not_claim_to_send_notes():
