@@ -166,6 +166,62 @@ thoughtful words, so far… (shoot for 42!)</h6>
 
   var form = document.getElementById("thankyou-note-form");
   var submitBtn = document.getElementById("send-note-btn");
+  const draftDatabaseName = 'saythanks-pwa';
+  const draftStoreName = 'drafts';
+  const draftKey = form.getAttribute('action');
+  let draftSaveTimer;
+
+  function openDraftDatabase() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) {
+        reject(new Error('IndexedDB is unavailable.'));
+        return;
+      }
+
+      const request = indexedDB.open(draftDatabaseName, 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore(draftStoreName, { keyPath: 'key' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function readDraft() {
+    const database = await openDraftDatabase();
+    return new Promise((resolve, reject) => {
+      const request = database.transaction(draftStoreName).objectStore(draftStoreName).get(draftKey);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function saveDraft() {
+    const database = await openDraftDatabase();
+    const transaction = database.transaction(draftStoreName, 'readwrite');
+    transaction.objectStore(draftStoreName).put({
+      key: draftKey,
+      body: editor.getMarkdown(),
+      byline: document.getElementById('byline').value,
+      savedAt: new Date().toISOString()
+    });
+  }
+
+  function scheduleDraftSave() {
+    window.clearTimeout(draftSaveTimer);
+    draftSaveTimer = window.setTimeout(() => {
+      saveDraft().catch(() => {
+        recordingStatus.innerText = 'Draft could not be saved on this device.';
+        recordingStatus.style.color = 'darkorange';
+      });
+    }, 250);
+  }
+
+  readDraft().then(draft => {
+    if (!draft) return;
+    if (draft.body) editor.setMarkdown(draft.body);
+    if (draft.byline) document.getElementById('byline').value = draft.byline;
+  }).catch(() => {});
   
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -204,6 +260,7 @@ thoughtful words, so far… (shoot for 42!)</h6>
 
 
   editor.addHook('change', () => {
+    scheduleDraftSave();
     counter.innerText = wordCount(editor.getMarkdown());
     counter1.innerText = wordCount(editor.getMarkdown());
     if (wordCount(editor.getMarkdown()) > 42) {
@@ -214,6 +271,8 @@ thoughtful words, so far… (shoot for 42!)</h6>
       counter1.style.color = "red";
     }
   });
+
+  document.getElementById('byline').addEventListener('input', scheduleDraftSave);
 
   document.querySelectorAll('.suggestion-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
