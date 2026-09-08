@@ -98,8 +98,7 @@ Think of the app as a small notebook with a mail carrier:
 
 ### Phase 7: Handle audio deliberately
 
-- Decide whether offline audio is in the first release. Text-only offline queueing is the lower-risk first slice.
-- If audio is included, store the Blob in IndexedDB only after checking browser storage limits and supported formats.
+- Offline audio is now supported for recorded or selected audio files. Store the Blob in IndexedDB and check browser storage limits and supported formats.
 - Show a clear failure state when audio cannot be retained or uploaded.
 - Remove local audio after confirmed delivery or explicit deletion.
 
@@ -121,7 +120,7 @@ Think of the app as a small notebook with a mail carrier:
 - Add Flask tests for idempotency and validation.
 - Add browser tests for install, offline navigation, offline draft recovery, reconnect, and one-time delivery.
 - Run accessibility checks for status messaging and disabled/retry controls.
-- Roll out text-only offline queueing first, then consider offline audio and richer inbox behavior.
+- Roll out offline audio with storage/quota monitoring, then consider richer inbox behavior.
 
 ## Recommended First Coding Slice
 
@@ -151,7 +150,7 @@ This slice proves the PWA foundation without mixing caching, authentication, dat
 - **Duplicate delivery:** retries without idempotency can create duplicate notes and emails. Server-side protection is required.
 - **Third-party editor/CDN assets:** the Toast UI editor and other remote assets are not reliably available offline. Bundle or locally serve the required editor assets before promising a fully offline editor.
 - **Authentication expiry:** an offline browser cannot refresh an expired Auth0 session. Queueing must report an authentication failure and require an online retry.
-- **Browser storage limits:** audio and large drafts may exceed quota. Text should be the first offline-supported payload.
+- **Browser storage limits:** audio and large drafts may exceed quota. Handle quota errors visibly and remove stored audio after confirmed delivery.
 - **Service-worker updates:** stale caches can leave users running old code. Use versioned caches and an explicit activation strategy.
 
 ## Questions and Responses
@@ -174,7 +173,7 @@ Yes. The user can create multiple independent text notes while offline. Each sub
 
 When the connection returns, the app sends the queued notes individually, updates each record as `sending`, `sent`, or `failed`, and removes a record only after the server confirms successful delivery. The interface should show the number of queued notes and provide retry or delete controls for individual failures.
 
-The first release should support multiple text notes offline. Audio attachments can be added later after storage limits, browser support, and cleanup behavior are tested.
+The first release supports multiple text notes and audio attachments offline. Audio depends on browser storage quota and is removed from the local outbox after confirmed delivery.
 
 ## Definition of Done
 

@@ -5,6 +5,10 @@
     
         <div class="eight columns offset-by-one">
             <h4>Thanks for spreading positivity!</h4>
+          <div id="delivery-status" role="status" aria-live="polite">
+            <p id="delivery-message">Checking note delivery status...</p>
+            <p id="outbox-count"></p>
+          </div>
             <p>
                 You can create your own thankfulness inbox by visiting
                 <a href="https://saythanks.io/">
@@ -61,4 +65,125 @@
             </p>
         </div>
     </div>
+    <script>
+    (function showDeliveryStatus() {
+      const message = document.getElementById('delivery-message');
+      const outboxCount = document.getElementById('outbox-count');
+      const status = new URLSearchParams(window.location.search).get('status');
+      const databaseName = 'saythanks-pwa';
+      const outboxStoreName = 'outbox';
+
+      function setWaitingCount(count) {
+        outboxCount.textContent = count
+          ? `${count} note${count === 1 ? '' : 's'} waiting to send.`
+          : '';
+      }
+
+      function readOutboxRecords() {
+        return new Promise((resolve, reject) => {
+          if (!('indexedDB' in window)) {
+            resolve([]);
+            return;
+          }
+
+          const request = indexedDB.open(databaseName, 2);
+          request.onsuccess = () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains(outboxStoreName)) {
+              resolve([]);
+              return;
+            }
+            const readRequest = database.transaction(outboxStoreName)
+              .objectStore(outboxStoreName).getAll();
+            readRequest.onsuccess = () => resolve(readRequest.result || []);
+            readRequest.onerror = () => reject(readRequest.error);
+          };
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function sendRecord(record) {
+        return new Promise((resolve, reject) => {
+          const request = new XMLHttpRequest();
+          const formData = new FormData();
+          formData.append('body', record.body);
+          formData.append('byline', record.byline);
+          formData.append('font_style', record.fontStyle);
+          formData.append('content-type', record.contentType);
+          if (record.audioBlob) {
+            formData.append('audio', record.audioBlob, record.audioFileName);
+          }
+          request.open('POST', record.action);
+          request.onload = () => {
+            if (request.status >= 200 && request.status < 400) {
+              resolve();
+            } else {
+              reject(new Error(`Send failed: ${request.status}`));
+            }
+          };
+          request.onerror = () => reject(new Error('Network error.'));
+          request.send(formData);
+        });
+      }
+
+      function deleteRecord(id) {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(databaseName, 2);
+          request.onsuccess = () => {
+            const transaction = request.result.transaction(
+              outboxStoreName, 'readwrite');
+            const deleteRequest = transaction.objectStore(outboxStoreName).delete(id);
+            deleteRequest.onsuccess = resolve;
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+          };
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      async function syncOutbox() {
+        if (!navigator.onLine) return;
+        const records = await readOutboxRecords();
+        const pendingRecords = records.filter(record => record.status !== 'sent');
+        if (pendingRecords.length) {
+          message.textContent = 'Sending saved notes...';
+        }
+        for (const record of pendingRecords) {
+          try {
+            await sendRecord(record);
+            await deleteRecord(record.id);
+          } catch (error) {
+            message.textContent = 'Some notes are still waiting to send.';
+          }
+        }
+      }
+
+      async function updateStatus() {
+        try {
+          await syncOutbox();
+          const records = await readOutboxRecords();
+          const count = records.filter(record => record.status !== 'sent').length;
+          setWaitingCount(count);
+          if (status === 'queued') {
+            message.textContent = count
+              ? 'Note saved to offline outbox.'
+              : 'Your note was sent successfully.';
+          } else if (status === 'sent') {
+            message.textContent = 'Your note was sent successfully.';
+          } else if (count) {
+            message.textContent = 'Some notes are still waiting to send.';
+          } else {
+            message.textContent = 'Your note delivery is complete.';
+          }
+        } catch (error) {
+          message.textContent = status === 'queued'
+            ? 'Note saved to offline outbox.'
+            : 'Your note was sent successfully.';
+        }
+      }
+
+      updateStatus();
+      window.addEventListener('online', updateStatus);
+      window.addEventListener('offline', updateStatus);
+    })();
+    </script>
 {% endblock content %}
