@@ -66,6 +66,12 @@ def test_service_worker_versioned_cache_removes_old_caches():
     assert "caches.delete(cacheName)" in service_worker
 
 
+def test_service_worker_cache_version_changes_for_new_offline_code():
+    service_worker = _read('saythanks/static/service-worker.js')
+
+    assert "const CACHE_NAME = 'saythanks-public-v2';" in service_worker
+
+
 def test_network_status_is_exposed_as_an_accessible_live_region():
     base_template = _read('saythanks/templates/base.htm.j2')
 
@@ -88,6 +94,7 @@ def test_note_form_uses_indexeddb_and_keys_drafts_by_form_action():
     assert "createObjectStore(outboxStoreName, { keyPath: 'id' })" in submit_template
     assert "status: 'queued'," in submit_template
     assert "createOutboxId()" in submit_template
+    assert "new URL(form.getAttribute('action'), window.location.href).href" in submit_template
 
 
 def test_note_form_restores_and_saves_body_and_byline():
@@ -119,6 +126,28 @@ def test_audio_is_explicitly_rejected_from_offline_outbox():
 
     assert "Audio notes cannot be queued offline yet." in submit_template
     assert "const hasAudio = audioBlob || audioFileInput.files.length > 0;" in submit_template
+
+
+def test_submission_redirects_to_shared_thanks_statuses():
+    submit_template = _read('saythanks/templates/submit_note.htm.j2')
+
+    assert "window.location.href = '/thanks?status=queued';" in submit_template
+    assert "window.location.href = '/thanks?status=sent';" in submit_template
+
+
+def test_thanks_page_reports_delivery_status_and_waiting_count():
+    thanks_template = _read('saythanks/templates/thanks.htm.j2')
+
+    assert '<div id="delivery-status" role="status" aria-live="polite">' in thanks_template
+    assert "new URLSearchParams(window.location.search).get('status')" in thanks_template
+    assert "Note saved to offline outbox." in thanks_template
+    assert "Your note was sent successfully." in thanks_template
+    assert "const outboxStoreName = 'outbox';" in thanks_template
+    assert "getAll();" in thanks_template
+    assert "Sending saved notes..." in thanks_template
+    assert "await sendRecord(record);" in thanks_template
+    assert "await deleteRecord(record.id);" in thanks_template
+    assert "window.addEventListener('online', updateStatus);" in thanks_template
 
 
 def test_offline_fallback_does_not_claim_to_send_notes():

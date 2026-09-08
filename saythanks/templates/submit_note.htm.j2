@@ -315,7 +315,7 @@ thoughtful words, so far… (shoot for 42!)</h6>
     }
     await writeOutbox({
       id: createOutboxId(),
-      action: form.getAttribute('action'),
+      action: new URL(form.getAttribute('action'), window.location.href).href,
       body: editor.getMarkdown(),
       byline: document.getElementById('byline').value,
       fontStyle: form.elements.font_style.value,
@@ -354,9 +354,7 @@ thoughtful words, so far… (shoot for 42!)</h6>
 
     if (!navigator.onLine) {
       queueOfflineNote().then(() => {
-        submitBtn.disabled = false;
-        recordingStatus.innerText = 'Note saved to the offline outbox.';
-        recordingStatus.style.color = 'darkorange';
+        window.location.href = '/thanks?status=queued';
       }).catch(error => {
         submitBtn.disabled = false;
         recordingStatus.innerText = error.message;
@@ -383,7 +381,9 @@ thoughtful words, so far… (shoot for 42!)</h6>
     //request.open("POST", "./{{ user }}/submit&{{ topic}}");
     request.open("POST", form.getAttribute('action'));
     request.onload  = () => {
-      if (request.status >= 200 && request.status < 400) window.location.href = '/thanks';
+      if (request.status >= 200 && request.status < 400) {
+        window.location.href = '/thanks?status=sent';
+      }
       else { submitBtn.disabled = false; recordingStatus.innerText = 'Send failed: ' + request.status; }
     };
     request.onerror = () => { submitBtn.disabled = false; recordingStatus.innerText = 'Network error.'; };
