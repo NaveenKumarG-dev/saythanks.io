@@ -182,6 +182,14 @@ def robots():
     return send_from_directory("static", "robots.txt")
 
 
+@app.route("/sw.js")
+def service_worker():
+    response = make_response(send_from_directory("static", "sw.js"))
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Content-Type"] = "application/javascript"
+    return response
+
+
 @app.route('/privacy')
 def privacy():
     return render_template("privacy.htm.j2")

@@ -167,36 +167,95 @@ thoughtful words, so far… (shoot for 42!)</h6>
   var form = document.getElementById("thankyou-note-form");
   var submitBtn = document.getElementById("send-note-btn");
   
+  function handleOfflineSave(actionUrl, bylineVal, bodyVal,
+                             contentTypeVal, fileBlob, fileName) {
+    if (typeof queueOfflineNote === 'function') {
+      queueOfflineNote({
+        action: actionUrl,
+        byline: bylineVal,
+        body: bodyVal,
+        contentType: contentTypeVal || 'markdown',
+        audioBlob: fileBlob,
+        audioFileName: fileName
+      }).then(() => {
+        recordingStatus.style.color = '#2ecc71';
+        recordingStatus.innerText =
+          '✈️ Offline: Saved to Outbox! ' +
+          'Will send automatically when connected.';
+        submitBtn.innerText = 'Saved to Outbox 📬';
+        submitBtn.disabled = true;
+        if (typeof showOutboxToast === 'function') {
+          showOutboxToast('Saved to Outbox (will send when online)');
+        }
+      }).catch((err) => {
+        submitBtn.disabled = false;
+        recordingStatus.style.color = 'red';
+        recordingStatus.innerText = 'Storage error: ' + err.message;
+      });
+    } else {
+      submitBtn.disabled = false;
+      recordingStatus.innerText = 'Network error. Please retry.';
+    }
+  }
+
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (submitBtn.disabled) return;     // ← guard re-entry
     submitBtn.disabled = true;
 
-    var formData = new FormData(form);
-    formData.append('body', editor.getMarkdown());
+    const bylineVal = document.getElementById('byline').value || '';
+    const bodyVal = editor.getMarkdown();
+    const cTypeRadio = form.querySelector('input[name="content-type"]:checked') ||
+                       form.querySelector('input[name="content-type"]');
+    const contentTypeVal = cTypeRadio ? cTypeRadio.value : 'markdown';
+    let attachedAudio = null;
+    let audioFileName = 'voice_note.webm';
 
-    // Add recorded audio if available
     if (audioBlob) {
-        const isMP4 = audioBlob.type && audioBlob.type.includes('mp4');
-        const audioFileName = audioBlob.name || 
-                              (isMP4 ? 'voice_note.m4a' : 'voice_note.webm');
-        formData.append('audio', audioBlob, audioFileName);
+      const isMP4 = audioBlob.type && audioBlob.type.includes('mp4');
+      audioFileName = audioBlob.name ||
+        (isMP4 ? 'voice_note.m4a' : 'voice_note.webm');
+      attachedAudio = audioBlob;
     } else if (audioFileInput.files.length > 0) {
-        const file = audioFileInput.files[0];
-        formData.append('audio', file, file.name || 'voice_note.webm');
+      attachedAudio = audioFileInput.files[0];
+      audioFileName = attachedAudio.name || 'voice_note.webm';
+    }
+
+    // Check if phone or desktop is offline / airplane mode
+    if (!navigator.onLine) {
+      handleOfflineSave(form.getAttribute('action'), bylineVal,
+                        bodyVal, contentTypeVal,
+                        attachedAudio, audioFileName);
+      return;
+    }
+
+    var formData = new FormData(form);
+    formData.append('body', bodyVal);
+
+    if (attachedAudio) {
+      formData.append('audio', attachedAudio, audioFileName);
     }
 
     const request = new XMLHttpRequest();
-    //request.open("POST", "./{{ user }}/submit&{{ topic}}");
     request.open("POST", form.getAttribute('action'));
     request.onload  = () => {
-      if (request.status >= 200 && request.status < 400) window.location.href = '/thanks';
-      else { submitBtn.disabled = false; recordingStatus.innerText = 'Send failed: ' + request.status; }
+      if (request.status >= 200 && request.status < 400) {
+        window.location.href = '/thanks';
+      } else {
+        submitBtn.disabled = false;
+        recordingStatus.innerText = 'Send failed: ' + request.status;
+      }
     };
-    request.onerror = () => { submitBtn.disabled = false; recordingStatus.innerText = 'Network error.'; };
+    request.onerror = () => {
+      // Fallback: save to outbox if network drops mid-send
+      handleOfflineSave(form.getAttribute('action'), bylineVal,
+                        bodyVal, contentTypeVal,
+                        attachedAudio, audioFileName);
+    };
     request.upload.onprogress = e => {
       if (e.lengthComputable) 
-        recordingStatus.innerText = 'Uploading… ' + Math.round(e.loaded / e.total * 100) + '%';
+        recordingStatus.innerText =
+          'Uploading… ' + Math.round(e.loaded / e.total * 100) + '%';
     };
     recordingStatus.innerText = 'Uploading… 0%';
     request.send(formData);  
