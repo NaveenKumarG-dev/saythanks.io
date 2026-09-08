@@ -19,7 +19,8 @@ from .logging_config import configure_logging
 
 from functools import wraps
 from flask import Flask, request, session, render_template, url_for
-from flask import abort, redirect, Markup, make_response
+from flask import abort, redirect, make_response
+from markupsafe import Markup
 from flask import send_from_directory
 from flask_common import Common
 from names import get_full_name
